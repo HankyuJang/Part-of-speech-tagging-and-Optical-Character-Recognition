@@ -1,13 +1,56 @@
 ###################################
 # CS B551 Fall 2017, Assignment #3
 #
-# Your names and user ids:
+# Name: Hankyu Jang, Pulkit Maloo, Shyam Narasimhan
+# UserID: hankjang-maloop-shynaras 
 #
 # (Based on skeleton code by D. Crandall)
 #
 #
 ####
 # Put your report here!!
+#
+# (1) Description 
+# 
+# [Creating initial, transition, emission probability] First I calculated initial, transition, and emission probabilities. In this procedure, I first calculated initial probability. Now I have the total different types of the hidden states. Using this information, I next initialized transition probabilities with all possible combinations and set it to 0. Then I calculated transition probabilities. Lastly, when creating emission probability, whenever a new word appears, I added that word as the emission probability for all the hidden states and set it to 0. The reason for the initialization is because, in the calculation of Viterbi algorithm, I need all the information of the emission probabilities for all the words appeared in training set.
+# 
+# [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores calculated during the Viterbi algorithm. `trace` is used to trace back the hidden states. During the traceback, I appended the states in the list `hidden`, then returned the reverse order of `hidden` that returns the list of predicted hidden states from the beginning of the given sentence. 
+#
+##############################################################
+# (2) Description of how the program works
+# 
+# The program `label.py` takes in a training file and a test file, then applies three different algorithms to mark every word in a sentence with its part of speech. In `solver.train`, function `train` in class `Solver` is called. As described above, the train function creates `initial`, `transition`, and `emission` probabilities. Then using these information, the program tests the test data on three algorithm we implemented in the class `Solver`.
+#
+#
+#
+##############################################################
+# (3) Disscussion of problems, assumptions, simplification, and design decisions we made
+# 
+# There were words in test file that are not trained in training file. In this case, there's no emission probabilities, hence the Viterbi algorithm raised error. I tried two different approach on this problem. First approach was simply set the score to 0 whenever unknown word appeared. Following is the result of the approach for the testset bc.test:
+#
+#==> So far scored 2000 sentences with 29442 words.
+#                   Words correct:     Sentences correct:
+#   0. Ground truth:      100.00%              100.00%
+#     1. Simplified:       18.60%                0.00%
+#         2. HMM VE:       18.60%                0.00%
+#        3. HMM MAP:       62.21%               30.15%
+#
+# The result was poor. Hence, I tried another approach: reproduce the algorithm by only removing the emission probability in calculation (Usingthe previous score and transition probability only). Following is the result of the approach for the testset bc.test:
+#
+#==> So far scored 2000 sentences with 29442 words.
+#                   Words correct:     Sentences correct:
+#   0. Ground truth:      100.00%              100.00%
+#     1. Simplified:       18.60%                0.00%
+#         2. HMM VE:       18.60%                0.00%
+#        3. HMM MAP:       89.78%               31.55%
+#
+# There was tremendous improvement on the accuracy.
+#
+##############################################################
+# (4) Answers to any questions asked below in the assignment
+#
+#
+#
 ####
 
 from __future__ import division
@@ -61,7 +104,7 @@ class Solver:
                     self.transition[S][S_prime] += 1
 
         ##############################################################
-        # Transition Probability
+        # Emission Probability
         ##############################################################
         for S in states:
             self.emission[S] = {}
@@ -111,16 +154,12 @@ class Solver:
 
         for i, obs in enumerate (observed) :
             for j, st in enumerate (states) :
-                if i == 0:
-                    if obs in self.words_in_training:
+                if obs in self.words_in_training:
+                    if i == 0:
                         score[j][i] = self.initial[st] * self.emission[st][obs]
                         trace[j][i] = 0
+                        #print score[j][i]
                     else:
-                        score[j][i] = 0
-                        trace[j][i] = 0
-                    #print score[j][i]
-                else:
-                    if obs in self.words_in_training:
                         maximum = score[j][i-1] * self.transition[st][st] * self.emission[st][obs]
                         max_k = j
                         for k, key in enumerate(self.transition.keys()):
@@ -129,9 +168,19 @@ class Solver:
                                 max_k = k
                         score[j][i] = maximum
                         trace[j][i] = max_k
-                    else:
-                        score[j][i] = 0
+                else:
+                    if i == 0:
+                        score[j][i] = self.initial[st]
                         trace[j][i] = 0
+                    else:
+                        maximum = score[j][i-1] * self.transition[st][st]
+                        max_k = j
+                        for k, key in enumerate(self.transition.keys()):
+                            if score[k][i-1] * self.transition[key][st] > maximum:
+                                maximum = score[k][i-1] * self.transition[key][st]
+                                max_k = k
+                        score[j][i] = maximum
+                        trace[j][i] = max_k
 
         # trace back
         z = np.argmax(score[:,-1])
@@ -142,13 +191,7 @@ class Solver:
             hidden.append(states[z])
 
         # return REVERSED traceback sequence
-        print hidden
         return hidden[::-1]
-        # return hidden
-        
-
-        # return [ "noun" ] * len(sentence)
-
 
     # This solve() method is called by label.py, so you should keep the interface the
     #  same, but you can change the code itself. 

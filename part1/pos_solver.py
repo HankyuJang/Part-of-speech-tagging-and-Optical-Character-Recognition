@@ -12,21 +12,43 @@
 #
 # (1) Description
 #
-# [Creating initial, transition, emission probability] First I calculated initial, transition, and emission probabilities. In this procedure, I first calculated initial probability. Now I have the total different types of the hidden states. Using this information, I next initialized transition probabilities with all possible combinations and set it to 0. Then I calculated transition probabilities. Lastly, when creating emission probability, whenever a new word appears, I added that word as the emission probability for all the hidden states and set it to 0. The reason for the initialization is because, in the calculation of Viterbi algorithm, I need all the information of the emission probabilities for all the words appeared in training set.
+# [Creating initial, transition, emission probability] First I calculated initial,
+#  transition, and emission probabilities. In this procedure, I first calculated
+#  initial probability. Now I have the total different types of the hidden states.
+#  Using this information, I next initialized transition probabilities with all
+#  possible combinations and set it to 0. Then I calculated transition probabilities.
+#  Lastly, when creating emission probability, whenever a new word appears, I added
+#  that word as the emission probability for all the hidden states and set it to 0.
+#  The reason for the initialization is because, in the calculation of Viterbi algorithm,
+#  I need all the information of the emission probabilities for all the words appeared
+#  in training set.
 #
-# [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores calculated during the Viterbi algorithm. `trace` is used to trace back the hidden states. During the traceback, I appended the states in the list `hidden`, then returned the reverse order of `hidden` that returns the list of predicted hidden states from the beginning of the given sentence.
+# [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores
+#  calculated during the Viterbi algorithm. `trace` is used to trace back the
+#  hidden states. During the traceback, I appended the states in the list `hidden`,
+#  then returned the reverse order of `hidden` that returns the list of predicted
+#  hidden states from the beginning of the given sentence.
 #
 ##############################################################
 # (2) Description of how the program works
 #
-# The program `label.py` takes in a training file and a test file, then applies three different algorithms to mark every word in a sentence with its part of speech. In `solver.train`, function `train` in class `Solver` is called. As described above, the train function creates `initial`, `transition`, and `emission` probabilities. Then using these information, the program tests the test data on three algorithm we implemented in the class `Solver`.
+# The program `label.py` takes in a training file and a test file, then applies
+# three different algorithms to mark every word in a sentence with its part of speech.
+# In `solver.train`, function `train` in class `Solver` is called. As described above,
+# the train function creates `initial`, `transition`, and `emission` probabilities.
+# Then using these information, the program tests the test data on three algorithm
+# we implemented in the class `Solver`.
 #
 #
 #
 ##############################################################
 # (3) Disscussion of problems, assumptions, simplification, and design decisions we made
 #
-# There were words in test file that are not trained in training file. In this case, there's no emission probabilities, hence the Viterbi algorithm raised error. I tried two different approach on this problem. First approach was simply set the score to 0 whenever unknown word appeared. Following is the result of the approach for the testset bc.test:
+# There were words in test file that are not trained in training file. In this case,
+# there's no emission probabilities, hence the Viterbi algorithm raised error.
+# I tried two different approach on this problem. First approach was simply set
+# the score to 0 whenever unknown word appeared. Following is the result of the
+# approach for the test set bc.test:
 #
 #==> So far scored 2000 sentences with 29442 words.
 #                   Words correct:     Sentences correct:
@@ -35,7 +57,10 @@
 #         2. HMM VE:       18.60%                0.00%
 #        3. HMM MAP:       62.21%               30.15%
 #
-# The result was poor. Hence, I tried another approach: reproduce the algorithm by only removing the emission probability in calculation (Usingthe previous score and transition probability only). Following is the result of the approach for the testset bc.test:
+# The result was poor. Hence, I tried another approach: reproduce the algorithm
+# by only removing the emission probability in calculation (Using the previous
+# score and transition probability only). Following is the result of the approach
+# for the test set bc.test:
 #
 #==> So far scored 2000 sentences with 29442 words.
 #                   Words correct:     Sentences correct:
@@ -80,7 +105,11 @@ class Solver:
         # Initial Probability
         ##############################################################
         for line in data:
+            # first word
             self.initial[line[1][0]] = self.initial.get(line[1][0], 0) + 1
+            # full sentence
+#            for S in line[1]:
+#                self.initial[S] = self.initial.get(S, 0) + 1
 
         ##############################################################
         # Transition Probability
@@ -140,7 +169,40 @@ class Solver:
         return sentence_states
 
     def hmm_ve(self, sentence):
-        return [ "noun" ] * len(sentence)
+        states = self.initial.keys()
+        observed = sentence
+        # observed = [word for word in sentence if word in self.words_in_training]
+        score = np.zeros([len(states), len(observed)])
+        state_array = []
+        for i, obs in enumerate(observed) :
+            max_value = 0
+            max_state = ''
+            for j, st in enumerate(states) :
+                if obs in self.words_in_training:
+                    if i == 0:
+                        score[j][i] = self.initial[st] * self.emission[st][obs]
+                        #print score[j][i]
+                    else:
+                        sum_value = 0
+                        for k, key in enumerate(self.transition.keys()):
+                            #if score[k][i-1] * self.transition[key][st] * self.emission[st][obs] > maximum:
+                            sum_value = sum_value + score[k][i-1] * self.transition[key][st] * self.emission[st][obs]
+
+                        score[j][i] = sum_value
+                else:
+                    if i == 0:
+                        score[j][i] = self.initial[st]
+                    else:
+                        sum_value = 0
+                        for k, key in enumerate(self.transition.keys()):
+                            #if score[k][i-1] * self.transition[key][st] > maximum:
+                            sum_value = sum_value + score[k][i-1] * self.transition[key][st]
+                        score[j][i] = sum_value
+                if score[j][i] > max_value:
+                    max_value = score[j][i]
+                    max_state = st
+            state_array = state_array + [max_state]
+        return state_array
 
     def hmm_viterbi(self, sentence):
         states = self.initial.keys()
@@ -191,8 +253,8 @@ class Solver:
         # return REVERSED traceback sequence
         return hidden[::-1]
 
-    # This solve() method is called by label.py, so you should keep the interface the
-    #  same, but you can change the code itself.
+    # This solve() method is called by label.py, so you should keep the interface
+    #  the same, but you can change the code itself.
     # It should return a list of part-of-speech labelings of the sentence, one
     #  part of speech per word.
     #

@@ -2,7 +2,7 @@
 # CS B551 Fall 2017, Assignment #3
 #
 # Name: Hankyu Jang, Pulkit Maloo, Shyam Narasimhan
-# UserID: hankjang-maloop-shynaras 
+# UserID: hankjang-maloop-shynaras
 #
 # (Based on skeleton code by D. Crandall)
 #
@@ -10,22 +10,22 @@
 ####
 # Put your report here!!
 #
-# (1) Description 
-# 
+# (1) Description
+#
 # [Creating initial, transition, emission probability] First I calculated initial, transition, and emission probabilities. In this procedure, I first calculated initial probability. Now I have the total different types of the hidden states. Using this information, I next initialized transition probabilities with all possible combinations and set it to 0. Then I calculated transition probabilities. Lastly, when creating emission probability, whenever a new word appears, I added that word as the emission probability for all the hidden states and set it to 0. The reason for the initialization is because, in the calculation of Viterbi algorithm, I need all the information of the emission probabilities for all the words appeared in training set.
-# 
-# [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores calculated during the Viterbi algorithm. `trace` is used to trace back the hidden states. During the traceback, I appended the states in the list `hidden`, then returned the reverse order of `hidden` that returns the list of predicted hidden states from the beginning of the given sentence. 
+#
+# [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores calculated during the Viterbi algorithm. `trace` is used to trace back the hidden states. During the traceback, I appended the states in the list `hidden`, then returned the reverse order of `hidden` that returns the list of predicted hidden states from the beginning of the given sentence.
 #
 ##############################################################
 # (2) Description of how the program works
-# 
+#
 # The program `label.py` takes in a training file and a test file, then applies three different algorithms to mark every word in a sentence with its part of speech. In `solver.train`, function `train` in class `Solver` is called. As described above, the train function creates `initial`, `transition`, and `emission` probabilities. Then using these information, the program tests the test data on three algorithm we implemented in the class `Solver`.
 #
 #
 #
 ##############################################################
 # (3) Disscussion of problems, assumptions, simplification, and design decisions we made
-# 
+#
 # There were words in test file that are not trained in training file. In this case, there's no emission probabilities, hence the Viterbi algorithm raised error. I tried two different approach on this problem. First approach was simply set the score to 0 whenever unknown word appeared. Following is the result of the approach for the testset bc.test:
 #
 #==> So far scored 2000 sentences with 29442 words.
@@ -81,7 +81,7 @@ class Solver:
         ##############################################################
         for line in data:
             self.initial[line[1][0]] = self.initial.get(line[1][0], 0) + 1
-            
+
         ##############################################################
         # Transition Probability
         ##############################################################
@@ -103,7 +103,7 @@ class Solver:
             self.emission[S] = {}
 
         for line in data:
-            for W, S in zip(line[0], line[1]):                
+            for W, S in zip(line[0], line[1]):
                 self.emission[S][W] = self.emission[S].get(W, 0) + 1
                 # Initialize emission probabilities with 0 for all possible W
                 for S_other in states:
@@ -129,13 +129,13 @@ class Solver:
     #
     def simplified(self, sentence):
         ##### P(S | W) = P(W | S) * P(S) / P(W)
-        sentence_states = []        
+        sentence_states = []
         for word in sentence:
             max_prob, most_prob_state = 0, ''
             for state in self.initial:
-                P_state_given_word = self.emission[state][word] * self.initial[state]
+                P_state_given_word = self.emission[state].get(word, 1) * self.initial[state]
                 if P_state_given_word > max_prob:
-                    max_prob, most_prob_state = P_state_given_word, state 
+                    max_prob, most_prob_state = P_state_given_word, state
             sentence_states.append(most_prob_state)
         return sentence_states
 
@@ -192,7 +192,7 @@ class Solver:
         return hidden[::-1]
 
     # This solve() method is called by label.py, so you should keep the interface the
-    #  same, but you can change the code itself. 
+    #  same, but you can change the code itself.
     # It should return a list of part-of-speech labelings of the sentence, one
     #  part of speech per word.
     #

@@ -80,12 +80,8 @@ class Solver:
         # Initial Probability
         ##############################################################
         for line in data:
-            for index, S in enumerate(line[1]):
-                # Initial Probability
-                if S in self.initial:
-                    self.initial[S] += 1
-                else:
-                    self.initial[S] = 1
+            self.initial[line[1][0]] = self.initial.get(line[1][0], 0) + 1
+            
         ##############################################################
         # Transition Probability
         ##############################################################
@@ -97,11 +93,8 @@ class Solver:
                 self.transition[S][S_prime] = 0
 
         for line in data:
-            n = len(line[1]) - 1 # n is for transitional probability
-            for index, S in enumerate(line[1]):
-                if index < n:
-                    S_prime = line[1][index+1]
-                    self.transition[S][S_prime] += 1
+            for S, S_prime in zip(line[1], line[1][1:]):
+                self.transition[S][S_prime] += 1
 
         ##############################################################
         # Emission Probability
@@ -110,16 +103,12 @@ class Solver:
             self.emission[S] = {}
 
         for line in data:
-            for index, S in enumerate(line[1]):
-                # Emission Probability
-                W = line[0][index]
-                if S not in self.emission:
-                    self.emission[S] = {}
+            for W, S in zip(line[0], line[1]):                
+                self.emission[S][W] = self.emission[S].get(W, 0) + 1
                 # Initialize emission probabilities with 0 for all possible W
                 for S_other in states:
                     if W not in self.emission[S_other]:
                         self.emission[S_other][W] = 0
-                self.emission[S][W] += 1
 
         self.words_in_training = self.emission[S].keys()
 
@@ -139,7 +128,16 @@ class Solver:
     # Functions for each algorithm.
     #
     def simplified(self, sentence):
-        return [ "noun" ] * len(sentence)
+        ##### P(S | W) = P(W | S) * P(S) / P(W)
+        sentence_states = []        
+        for word in sentence:
+            max_prob, most_prob_state = 0, ''
+            for state in self.initial:
+                P_state_given_word = self.emission[state][word] * self.initial[state]
+                if P_state_given_word > max_prob:
+                    max_prob, most_prob_state = P_state_given_word, state 
+            sentence_states.append(most_prob_state)
+        return sentence_states
 
     def hmm_ve(self, sentence):
         return [ "noun" ] * len(sentence)

@@ -105,11 +105,11 @@ class Solver:
         # Initial Probability
         ##############################################################
         for line in data:
-            # first word
+            ##### first word
             self.initial[line[1][0]] = self.initial.get(line[1][0], 0) + 1
-            # full sentence
-#            for S in line[1]:
-#                self.initial[S] = self.initial.get(S, 0) + 1
+            #### all words
+            #for S in line[1]:
+            #     self.initial[S] = self.initial.get(S, 0) + 1
 
         ##############################################################
         # Transition Probability
@@ -158,14 +158,17 @@ class Solver:
     #
     def simplified(self, sentence):
         ##### P(S | W) = P(W | S) * P(S) / P(W)
+        states = self.initial.keys()
         sentence_states = []
         for word in sentence:
-            max_prob, most_prob_state = 0, ''
-            for state in self.initial:
-                P_state_given_word = self.emission[state].get(word, 1) * self.initial[state]
-                if P_state_given_word > max_prob:
-                    max_prob, most_prob_state = P_state_given_word, state
-            sentence_states.append(most_prob_state)
+            probs_states = sorted([(self.emission[state].get(word, 1) * self.initial[state], state) for state in states], key = lambda x: x[0])
+            sentence_states.append(probs_states[-1][1])
+#            max_prob, most_prob_state = 0, ''
+#            for state in states:
+#                P_state_given_word = self.emission[state].get(word, 1) * self.initial[state]
+#                if P_state_given_word > max_prob:
+#                    max_prob, most_prob_state = P_state_given_word, state
+#            sentence_states.append(most_prob_state)
         return sentence_states
 
     def hmm_ve(self, sentence):
@@ -173,80 +176,54 @@ class Solver:
         observed = sentence
         # observed = [word for word in sentence if word in self.words_in_training]
         score = np.zeros([len(states), len(observed)])
-        state_array = []
-        for i, obs in enumerate(observed) :
-            max_value = 0
-            max_state = ''
-            for j, st in enumerate(states) :
-                if obs in self.words_in_training:
-                    if i == 0:
-                        score[j][i] = self.initial[st] * self.emission[st][obs]
-                        #print score[j][i]
-                    else:
-                        sum_value = 0
-                        for k, key in enumerate(self.transition.keys()):
-                            #if score[k][i-1] * self.transition[key][st] * self.emission[st][obs] > maximum:
-                            sum_value = sum_value + score[k][i-1] * self.transition[key][st] * self.emission[st][obs]
+        predicted_states = []
 
-                        score[j][i] = sum_value
+        for i, obs in enumerate(observed):
+
+            max_value, max_state = 0, ''
+
+            for j, st in enumerate(states):
+                if i == 0:
+                    score[j][i] = self.initial[st] * self.emission[st].get(obs, 1)
                 else:
-                    if i == 0:
-                        score[j][i] = self.initial[st]
-                    else:
-                        sum_value = 0
-                        for k, key in enumerate(self.transition.keys()):
-                            #if score[k][i-1] * self.transition[key][st] > maximum:
-                            sum_value = sum_value + score[k][i-1] * self.transition[key][st]
-                        score[j][i] = sum_value
+                    p = 0
+                    for k, key in enumerate(self.transition):
+                        #if score[k][i-1] * self.transition[key][st] * self.emission[st][obs] > maximum:
+                        p += score[k][i-1] * self.transition[key][st] * self.emission[st].get(obs, 1)
+                    score[j][i] = p
+
                 if score[j][i] > max_value:
-                    max_value = score[j][i]
-                    max_state = st
-            state_array = state_array + [max_state]
-        return state_array
+                    max_value, max_state = score[j][i], st
+            predicted_states.append(max_state)
+
+        return predicted_states
 
     def hmm_viterbi(self, sentence):
         states = self.initial.keys()
         observed = sentence
-        # observed = [word for word in sentence if word in self.words_in_training]
-
+        # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
         score = np.zeros([len(states), len(observed)])
         trace = np.zeros([len(states), len(observed)], dtype=int)
 
-        for i, obs in enumerate (observed) :
-            for j, st in enumerate (states) :
-                if obs in self.words_in_training:
-                    if i == 0:
-                        score[j][i] = self.initial[st] * self.emission[st][obs]
-                        trace[j][i] = 0
-                        #print score[j][i]
-                    else:
-                        maximum = score[j][i-1] * self.transition[st][st] * self.emission[st][obs]
-                        max_k = j
-                        for k, key in enumerate(self.transition.keys()):
-                            if score[k][i-1] * self.transition[key][st] * self.emission[st][obs] > maximum:
-                                maximum = score[k][i-1] * self.transition[key][st] * self.emission[st][obs]
-                                max_k = k
-                        score[j][i] = maximum
-                        trace[j][i] = max_k
+        for i, obs in enumerate(observed):
+            for j, st in enumerate(states):
+                if i == 0:
+                    score[j][i] = self.initial[st] * self.emission[st].get(obs, 1)
+                    trace[j][i] = 0
+                    #print score[j][i]
                 else:
-                    if i == 0:
-                        score[j][i] = self.initial[st]
-                        trace[j][i] = 0
-                    else:
-                        maximum = score[j][i-1] * self.transition[st][st]
-                        max_k = j
-                        for k, key in enumerate(self.transition.keys()):
-                            if score[k][i-1] * self.transition[key][st] > maximum:
-                                maximum = score[k][i-1] * self.transition[key][st]
-                                max_k = k
-                        score[j][i] = maximum
-                        trace[j][i] = max_k
-
+                    maximum, max_k  = 0, j
+                    for k, key in enumerate(self.transition):
+                        #### take logs ###
+                        p = score[k][i-1] * self.transition[key][st] * self.emission[st].get(obs, 1)
+                        if p > maximum:
+                            maximum, max_k = p, k
+                    score[j][i], trace[j][i] = maximum, max_k
         # trace back
         z = np.argmax(score[:,-1])
         hidden = [states[z]]
 
-        for i in range(1,len(observed))[::-1] :
+        for i in range(len(observed)-1, 0, -1):
             z = trace[z,i]
             hidden.append(states[z])
 

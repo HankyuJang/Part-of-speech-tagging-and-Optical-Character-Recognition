@@ -88,17 +88,24 @@ import numpy as np
 # that we've supplied.
 #
 class Solver:
-
-    SMALL_PROB = 1/float(10**6)
-    initial_all = {}
-    initial = {}
-    transition = {}
-    emission = {}
-    words_in_training = []
+    def __init__(self):
+        self.SMALL_PROB = 1/10**6
+        self.pos = {}
+        self.initial = {}
+        self.transition = {}
+        self.emission = {}
+#        self.words_in_training = []
 
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling
     def posterior(self, sentence, label):
+
+        if label == "Simplified":
+            return 0
+        elif label == "HMM VE":
+            return math.log(max(self.ve[:-1]))
+        elif label == "HMM MAP":
+            return math.log(max(self.viterbi[:-1]))
         return 0
 
     # Do the training!
@@ -112,7 +119,7 @@ class Solver:
             self.initial[line[1][0]] = self.initial.get(line[1][0], 0) + 1
             ##### considering all words
             for S in line[1]:
-                 self.initial_all[S] = self.initial_all.get(S, 0) + 1
+                 self.pos[S] = self.pos.get(S, 0) + 1
 
         ##############################################################
         # Transition Probability
@@ -136,18 +143,12 @@ class Solver:
         for line in data:
             for W, S in zip(line[0], line[1]):
                 self.emission[S][W] = self.emission[S].get(W, 0) + 1
-                # Initialize emission probabilities with 0 for all possible W
-#                for S_other in states:
-#                    if W not in self.emission[S_other]:
-#                        self.emission[S_other][W] = 0
-                self.words_in_training.append(W)
-
-#        self.words_in_training = self.emission[S].keys()
+#                self.words_in_training.append(W) # for unseen words
 
         # Convert Counts to probabilities
-        S_total = sum(self.initial_all.values())
-        for S in self.initial_all:
-            self.initial_all[S] /= S_total
+        S_total = sum(self.pos.values())
+        for S in self.pos:
+            self.pos[S] /= S_total
         S_total = sum(self.initial.values())
         for S in self.initial:
             self.initial[S] /= S_total
@@ -164,10 +165,10 @@ class Solver:
     #
     def simplified(self, sentence):
         ##### P(S | W) = P(W | S) * P(S) / P(W)
-        states = self.initial_all.keys()
+        states = self.pos.keys()
         predicted_states = []
         for word in sentence:
-            most_prob_state = max([ (st, self.emission[st].get(word, self.SMALL_PROB) * self.initial_all[st]) \
+            most_prob_state = max([ (st, self.emission[st].get(word, self.SMALL_PROB) * self.pos[st]) \
                                         for st in states ], key = lambda x: x[1])
             predicted_states.append(most_prob_state[0])
 #            max_prob, most_prob_state = 0, ''
@@ -181,25 +182,38 @@ class Solver:
     def hmm_ve(self, sentence):
         states = self.initial.keys()
         observed = sentence
-        # observed = [word for word in sentence if word in self.words_in_training]
-        score = np.zeros([len(states), len(observed)])
+        # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
+#        score = np.zeros([len(states), len(observed)])
+        forward = np.zeros([len(states), len(observed)])
+        backward = np.zeros([len(states), len(observed)])
         predicted_states = []
 
+        for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
+            for j, st in enumerate(states):
+                if i == len(observed) - 1:
+                    p = 1
+                else:
+                    p = sum( [ backward[k][i+1] * self.transition[st].get(key, self.SMALL_PROB) * self.emission[key].get(observed[i+1], self.SMALL_PROB) \
+                                for k, key in enumerate(self.transition)] )
+                backward[j][i] = p
+
         for i, obs in enumerate(observed):
-
-            max_value, max_state = 0, ''
-
             for j, st in enumerate(states):
                 if i == 0:
-                    score[j][i] = self.initial[st] * self.emission[st].get(obs, self.SMALL_PROB)
+                    p = self.initial[st]
                 else:
-                    p = sum( [score[k][i-1] * self.transition[key].get(st, self.SMALL_PROB) \
+                    p = sum( [forward[k][i-1] * self.transition[key].get(st, self.SMALL_PROB) \
                                 for k, key in enumerate(self.transition)] )
-                    score[j][i] = p * self.emission[st].get(obs, self.SMALL_PROB)
+                forward[j][i] = p * self.emission[st].get(obs, self.SMALL_PROB)
 
-                if score[j][i] > max_value:
-                    max_value, max_state = score[j][i], st
-            predicted_states.append(max_state)
+#                if forward[j][i] > max_value:
+#                    max_value, max_state = score[j][i], st
+#            predicted_states.append(max_state)
+        self.ve = np.multiply(forward, backward)
+
+        for i in range(len(observed)):
+            z = np.argmax(self.ve[:, i])
+            predicted_states.append(states[z])
 
         return predicted_states
 
@@ -207,21 +221,20 @@ class Solver:
         states = self.initial.keys()
         observed = sentence
         # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
-        score = np.zeros([len(states), len(observed)])
+        self.viterbi = np.zeros([len(states), len(observed)])
         trace = np.zeros([len(states), len(observed)], dtype=int)
 
         for i, obs in enumerate(observed):
             for j, st in enumerate(states):
                 if i == 0:
-                    score[j][i] = self.initial[st] * self.emission[st].get(obs, self.SMALL_PROB)
-                    trace[j][i] = 0
+                    self.viterbi[j][i], trace[j][i] = self.initial[st] * self.emission[st].get(obs, self.SMALL_PROB), 0
                     #print score[j][i]
                 else:
-                    max_k, maximum = max([ (k, score[k][i-1] * self.transition[key].get(st, self.SMALL_PROB)) \
+                    max_k, maximum = max([ (k, self.viterbi[k][i-1] * self.transition[key].get(st, self.SMALL_PROB)) \
                                            for k, key in enumerate(self.transition)], key = lambda x: x[1])
-                    score[j][i], trace[j][i] = maximum * self.emission[st].get(obs, self.SMALL_PROB), max_k
+                    self.viterbi[j][i], trace[j][i] = maximum * self.emission[st].get(obs, self.SMALL_PROB), max_k
         # trace back
-        z = np.argmax(score[:,-1])
+        z = np.argmax(self.viterbi[:,-1])
         hidden = [states[z]]
         for i in range(len(observed)-1, 0, -1):
             z = trace[z,i]

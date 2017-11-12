@@ -99,14 +99,13 @@ class Solver:
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling
     def posterior(self, sentence, label):
-
-        if label == "Simplified":
-            return 0
-        elif label == "HMM VE":
-            return math.log(max(self.ve[:-1]))
-        elif label == "HMM MAP":
-            return math.log(max(self.viterbi[:-1]))
-        return 0
+        ans = self.initial[label[0]]
+        for i, (st, obs) in enumerate(zip(label, sentence)):
+            if i == len(label)-1:
+                ans *= self.emission[st].get(obs, self.SMALL_PROB)
+                break
+            ans *= self.transition[st].get(label[i+1], self.SMALL_PROB) * self.emission[st].get(obs, self.SMALL_PROB)
+        return math.log(ans)
 
     # Do the training!
     #

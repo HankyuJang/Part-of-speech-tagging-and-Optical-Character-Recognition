@@ -11,6 +11,7 @@ from __future__ import division
 from PIL import Image, ImageDraw, ImageFont
 import sys
 import numpy as np
+from math import log
 
 CHARACTER_WIDTH = 14
 CHARACTER_HEIGHT = 25
@@ -50,10 +51,13 @@ def train(data):
     P_char = {}
     initial = {}
     transition = {ch:{} for ch in VALID_CHAR}
+
+    ##### Delete this ################
     with open("sh.txt", 'r') as fhand:
         data = fhand.read()
         unicode_data = data.decode("utf-8")
         data = unicode_data.encode("ascii", "ignore")
+    ##################################
 
     # Total count of a character
     for line in data:
@@ -121,7 +125,7 @@ def simplified(sentence):
     return predicted_states
 
 def hmm_ve(sentence):
-    states = initial.keys()
+    states = list(VALID_CHAR)
     observed = sentence
 
     forward = np.zeros([len(states), len(observed)])
@@ -140,7 +144,8 @@ def hmm_ve(sentence):
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-                p = initial[st]
+#                p = initial.get(st, SMALL_PROB)
+                p = 1/len(VALID_CHAR)
             else:
                 p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
                             for k, key in enumerate(transition)] )
@@ -158,7 +163,7 @@ def hmm_ve(sentence):
     return predicted_states
 
 def hmm_viterbi( sentence):
-    states = initial.keys()
+    states = list(VALID_CHAR)
     observed = sentence
     # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
     viterbi = np.zeros([len(states), len(observed)])
@@ -167,12 +172,14 @@ def hmm_viterbi( sentence):
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-                viterbi[j][i], trace[j][i] = initial[st] * emission(st, obs), 0
-                #print score[j][i]
+#                viterbi[j][i], trace[j][i] = log(initial.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
+                viterbi[j][i], trace[j][i] = log(1/len(VALID_CHAR)) + log(emission(st, obs)), 0
             else:
-                max_k, max_p = max([ (k, viterbi[k][i-1] * transition[key].get(st, SMALL_PROB)) \
+                max_k, max_p = max([ (k, viterbi[k][i-1] + log(transition[key].get(st, SMALL_PROB))) \
                                        for k, key in enumerate(transition)], key = lambda x: x[1])
-                viterbi[j][i], trace[j][i] = max_p * emission(st, obs), max_k
+                viterbi[j][i], trace[j][i] = max_p + log(emission(st, obs)), max_k
+
+#    print viterbi[:,-1]
     # trace back
     z = np.argmax(viterbi[:,-1])
     hidden = [states[z]]

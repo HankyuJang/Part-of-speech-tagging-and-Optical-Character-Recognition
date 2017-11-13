@@ -80,7 +80,7 @@
 
 from __future__ import division
 import random
-import math
+from math import log
 import numpy as np
 
 # We've set up a suggested code structure, but feel free to change it. Just
@@ -105,7 +105,7 @@ class Solver:
                 ans *= self.emission[st].get(obs, self.SMALL_PROB)
                 break
             ans *= self.transition[st].get(label[i+1], self.SMALL_PROB) * self.emission[st].get(obs, self.SMALL_PROB)
-        return math.log(ans)
+        return log(ans)
 
     # Do the training!
     #
@@ -226,12 +226,12 @@ class Solver:
         for i, obs in enumerate(observed):
             for j, st in enumerate(states):
                 if i == 0:
-                    self.viterbi[j][i], trace[j][i] = self.initial[st] * self.emission[st].get(obs, self.SMALL_PROB), 0
+                    self.viterbi[j][i], trace[j][i] = log(self.initial[st]) + log(self.emission[st].get(obs, self.SMALL_PROB)), 0
                     #print score[j][i]
                 else:
-                    max_k, max_p = max([ (k, self.viterbi[k][i-1] * self.transition[key].get(st, self.SMALL_PROB)) \
+                    max_k, max_p = max([ (k, self.viterbi[k][i-1] + log(self.transition[key].get(st, self.SMALL_PROB))) \
                                            for k, key in enumerate(self.transition)], key = lambda x: x[1])
-                    self.viterbi[j][i], trace[j][i] = max_p * self.emission[st].get(obs, self.SMALL_PROB), max_k
+                    self.viterbi[j][i], trace[j][i] = max_p + log(self.emission[st].get(obs, self.SMALL_PROB)), max_k
         # trace back
         z = np.argmax(self.viterbi[:,-1])
         hidden = [states[z]]

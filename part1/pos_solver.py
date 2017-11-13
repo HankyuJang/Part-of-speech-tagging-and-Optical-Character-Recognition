@@ -179,7 +179,7 @@ class Solver:
         return predicted_states
 
     def hmm_ve(self, sentence):
-        states = self.initial.keys()
+        states = self.pos.keys()
         observed = sentence
         # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
 #        score = np.zeros([len(states), len(observed)])
@@ -217,7 +217,7 @@ class Solver:
         return predicted_states
 
     def hmm_viterbi(self, sentence):
-        states = self.initial.keys()
+        states = self.pos.keys()
         observed = sentence
         # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
         self.viterbi = np.zeros([len(states), len(observed)])

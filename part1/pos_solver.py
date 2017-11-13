@@ -229,9 +229,9 @@ class Solver:
                     self.viterbi[j][i], trace[j][i] = self.initial[st] * self.emission[st].get(obs, self.SMALL_PROB), 0
                     #print score[j][i]
                 else:
-                    max_k, maximum = max([ (k, self.viterbi[k][i-1] * self.transition[key].get(st, self.SMALL_PROB)) \
+                    max_k, max_p = max([ (k, self.viterbi[k][i-1] * self.transition[key].get(st, self.SMALL_PROB)) \
                                            for k, key in enumerate(self.transition)], key = lambda x: x[1])
-                    self.viterbi[j][i], trace[j][i] = maximum * self.emission[st].get(obs, self.SMALL_PROB), max_k
+                    self.viterbi[j][i], trace[j][i] = max_p * self.emission[st].get(obs, self.SMALL_PROB), max_k
         # trace back
         z = np.argmax(self.viterbi[:,-1])
         hidden = [states[z]]

@@ -7,29 +7,34 @@
 # (based on skeleton code by D. Crandall, Oct 2017)
 #
 
+from __future__ import division
 from PIL import Image, ImageDraw, ImageFont
 import sys
-from __future__ import division
+import numpy as np
 
 CHARACTER_WIDTH = 14
 CHARACTER_HEIGHT = 25
+SMALL_PROB = 1/10**6
+VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
 
 
 def load_letters(fname):
     im = Image.open(fname)
     px = im.load()
     (x_size, y_size) = im.size
-    print im.size
-    print int(x_size / CHARACTER_WIDTH) * CHARACTER_WIDTH
+#    print im.size
+#    print int(x_size / CHARACTER_WIDTH) * CHARACTER_WIDTH
     result = []
     for x_beg in range(0, int(x_size / CHARACTER_WIDTH) * CHARACTER_WIDTH, CHARACTER_WIDTH):
         result += [ [ "".join([ '*' if px[x, y] < 1 else ' ' for x in range(x_beg, x_beg+CHARACTER_WIDTH) ]) for y in range(0, CHARACTER_HEIGHT) ], ]
     return result
 
+
 def load_training_letters(fname):
     TRAIN_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
     letter_images = load_letters(fname)
     return { TRAIN_LETTERS[i]: letter_images[i] for i in range(0, len(TRAIN_LETTERS) ) }
+
 
 def read_data_part1(fname="bc.train"):
     exemplars = []
@@ -40,23 +45,22 @@ def read_data_part1(fname="bc.train"):
     return exemplars
 
 
-
 def train(data):
-    VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
+
     P_char = {}
     initial = {}
     transition = {ch:{} for ch in VALID_CHAR}
-    emission = {}
-#    with open(fname, 'r') as fhand:
-#        data = fhand.read()
-#        unicode_data = data.decode("utf-8")
-#        data = unicode_data.encode("ascii", "ignore")
+    with open("sh.txt", 'r') as fhand:
+        data = fhand.read()
+        unicode_data = data.decode("utf-8")
+        data = unicode_data.encode("ascii", "ignore")
 
     # Total count of a character
     for line in data:
         for letter in line:
             if letter in VALID_CHAR:
                 P_char[letter] = P_char.get(letter, 0) + 1
+
     # Convert to prob
     S_total = sum(P_char.values())
     for l in P_char:
@@ -64,7 +68,8 @@ def train(data):
 
     # Count of character at the start of a line
     for line in data:
-        initial[line[0]] = initial.get(line[0], 0) + 1
+        if line[0] in VALID_CHAR:
+            initial[line[0]] = initial.get(line[0], 0) + 1
     # Convert to prob
     S_total = len(data)
     for l in initial:
@@ -83,6 +88,100 @@ def train(data):
 
     return P_char, initial, transition
 
+def emission(st, obs):
+    """
+    obs: list of list representing the character
+    st: character
+
+    returns emission probability calculated by the formula (m * 0.8 + 0.2 * n)/(m+n)
+    where m is the number of same pixel and n is number of diff pixel
+    """
+    m, n = 0, 0
+    for line_train, line_obs in zip(train_letters[st], obs):
+        for p1, p2 in zip(line_train, line_obs):
+            if p1 == p2:
+                m += 1
+            else:
+                n += 1
+    return (m * 0.8)/(m + n)
+
+# Functions for each algorithm.
+#
+def simplified(sentence):
+    ##### P(S | W) = P(W | S) * P(S) / P(W)
+    # using 1/72 for p_initial
+
+    states = list(VALID_CHAR)
+    predicted_states = []
+    observed = sentence
+    for obs in observed:
+        most_prob_state = max([ (st, emission(st, obs) * 1/len(VALID_CHAR)) \
+                                    for st in states], key = lambda x: x[1])
+        predicted_states.append(most_prob_state[0])
+    return predicted_states
+
+def hmm_ve(sentence):
+    states = initial.keys()
+    observed = sentence
+
+    forward = np.zeros([len(states), len(observed)])
+    backward = np.zeros([len(states), len(observed)])
+    predicted_states = []
+
+    for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
+        for j, st in enumerate(states):
+            if i == len(observed) - 1:
+                p = 1
+            else:
+                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
+                            for k, key in enumerate(transition)] )
+            backward[j][i] = p
+
+    for i, obs in enumerate(observed):
+        for j, st in enumerate(states):
+            if i == 0:
+                p = initial[st]
+            else:
+                p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
+                            for k, key in enumerate(transition)] )
+            forward[j][i] = p * emission(st, obs)
+
+#                if forward[j][i] > max_value:
+#                    max_value, max_state = score[j][i], st
+#            predicted_states.append(max_state)
+    ve = np.multiply(forward, backward)
+
+    for i in range(len(observed)):
+        z = np.argmax(ve[:, i])
+        predicted_states.append(states[z])
+
+    return predicted_states
+
+def hmm_viterbi( sentence):
+    states = initial.keys()
+    observed = sentence
+    # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
+    viterbi = np.zeros([len(states), len(observed)])
+    trace = np.zeros([len(states), len(observed)], dtype=int)
+
+    for i, obs in enumerate(observed):
+        for j, st in enumerate(states):
+            if i == 0:
+                viterbi[j][i], trace[j][i] = initial[st] * emission(st, obs), 0
+                #print score[j][i]
+            else:
+                max_k, max_p = max([ (k, viterbi[k][i-1] * transition[key].get(st, SMALL_PROB)) \
+                                       for k, key in enumerate(transition)], key = lambda x: x[1])
+                viterbi[j][i], trace[j][i] = max_p * emission(st, obs), max_k
+    # trace back
+    z = np.argmax(viterbi[:,-1])
+    hidden = [states[z]]
+    for i in range(len(observed)-1, 0, -1):
+        z = trace[z,i]
+        hidden.append(states[z])
+
+    # return REVERSED traceback sequence
+    return hidden[::-1]
 
 #####
 # main program
@@ -98,11 +197,13 @@ P_char, initial, transition = train(data = read_data_part1())
 # Each training letter is now stored as a list of characters, where black
 #  dots are represented by *'s and white dots are spaces. For example,
 #  here's what "a" looks like:
-print "\n".join([ r for r in train_letters['a'] ])
+#print "\n".join([ r for r in train_letters['a'] ])
 
 # Same with test letters. Here's what the third letter of the test data
 #  looks like:
-print "\n".join([ r for r in test_letters[2] ])
+#print "\n".join([ r for r in test_letters[2] ])
 
 
-
+print " Simple: ", "".join(simplified(test_letters))
+print " HMM VE: ", "".join(hmm_ve(test_letters))
+print "HMM MAP: ", "".join(hmm_viterbi(test_letters))

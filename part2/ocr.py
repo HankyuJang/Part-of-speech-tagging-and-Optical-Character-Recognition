@@ -100,16 +100,21 @@ def train(data):
         for l_n in transition[l]:
             transition[l][l_n] /= S_total
 
+
     return P_char, initial, transition
 
+# Increase coeffcient of fp or tn to handle ' ' better, but this may end up in many empty spaces.
 def emission(st, obs):
     """
     obs: list of list representing the character
     st: character
 
-    returns emission probability calculated by the formula (m * 0.8 + 0.2 * n)/(m+n)
-    where m is the number of same pixel and n is number of diff pixel
+    tp: True positive  - obs:'*', st:'*'
+    fp: False positive - obs:'*', st:' '
+    tn: True negative  - obs:' ', st:'*'
+    fn: False negative - obs:' ', st:' '
     """
+<<<<<<< HEAD
     m, n, star = 0, 0, 0
     for line_train, line_obs in zip(train_letters[st], obs):
         for p1, p2 in zip(line_train, line_obs):
@@ -121,6 +126,21 @@ def emission(st, obs):
                 n += 1
     return (m + 1) / ( (m+n) + 72)
 #    return 0.8*m/(m+n)
+=======
+    tp, fn, tn, fp = 0, 0, 0, 0
+    for line_train, line_obs in zip(train_letters[st], obs):
+        for p1, p2 in zip(line_train, line_obs):
+            if p1 == '*' and p2 == '*':
+                tp += 1
+            elif p1 == ' ' and p2 == ' ':
+                fn += 1
+            elif p1 == '*' and p2 == ' ':
+                tn += 1
+            elif p1 == ' ' and p2 == '*':
+                fp += 1
+    
+    return (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
+>>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
 
 # Functions for each algorithm.
 #
@@ -136,6 +156,13 @@ def simplified(sentence):
         predicted_states.append(most_prob_state[0])
     return predicted_states
 
+# def upscale(number):
+    # factor = 0
+    # while number < 1:
+        # number *= 10
+        # factor += 1
+    # return factor
+
 def hmm_ve(sentence):
     global f
     global b
@@ -144,6 +171,7 @@ def hmm_ve(sentence):
     forward = np.zeros([len(states), len(observed)])
     backward = np.zeros([len(states), len(observed)])
     predicted_states = []
+    factor_list = np.zeros([len(states), len(observed)])
 
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
@@ -152,7 +180,13 @@ def hmm_ve(sentence):
             else:
                 p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
                             for k, key in enumerate(states)] )
+<<<<<<< HEAD
             forward[j][i] = p * emission(st, obs) #* pow(10,50)
+=======
+            # factor = upscale(p*emission(st,obs))
+            # factor_list[j][i] = factor
+            forward[j][i] = p * emission(st, obs) * pow(10,80)
+>>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
@@ -161,7 +195,9 @@ def hmm_ve(sentence):
             else:
                 p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
                             for k, key in enumerate(states)] )
-            backward[j][i] = p
+            # factor = upscale(p*emission(st,obs))
+            # backward[j][i] = p * pow(10, factor_list[j][i])
+            backward[j][i] = p * pow(10, 80)
 
     f = forward
     b = backward
@@ -176,10 +212,13 @@ def hmm_ve(sentence):
     return predicted_states
 
 def hmm_viterbi( sentence):
-
     states = list(VALID_CHAR)
     observed = sentence
 
+<<<<<<< HEAD
+=======
+    # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
+>>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
     viterbi = np.zeros([len(states), len(observed)])
     trace = np.zeros([len(states), len(observed)], dtype=int)
 
@@ -224,6 +263,6 @@ P_char, initial, transition = train(data = read_data_part1())
 #  looks like:
 #print "\n".join([ r for r in test_letters[2] ])
 
-print " Simple:", "".join(simplified(test_letters))
+# print " Simple:", "".join(simplified(test_letters))
 print " HMM VE:", "".join(hmm_ve(test_letters))
-print "HMM MAP:", "".join(hmm_viterbi(test_letters))
+# print "HMM MAP:", "".join(hmm_viterbi(test_letters))

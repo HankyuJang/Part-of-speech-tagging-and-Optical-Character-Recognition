@@ -20,6 +20,8 @@ SMALL_PROB2 = 1/10**3
 VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
 states = list(VALID_CHAR)
 ## Delete this ###
+f = 0
+b = 0
 v = []
 vi = []
 ##################
@@ -132,6 +134,8 @@ def simplified(sentence):
     return predicted_states
 
 def hmm_ve(sentence):
+    global f
+    global b
     ##### Must find the BUG ##############
     observed = sentence
 
@@ -147,16 +151,19 @@ def hmm_ve(sentence):
             else:
                 p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
                             for k, key in enumerate(states)] )
-            forward[j][i] = p * emission(st, obs)
+            forward[j][i] = p * emission(st, obs) * pow(10,50)
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
             if i == len(observed) - 1:
                 p = 1
             else:
-                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
+                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) * pow(10,50)\
                             for k, key in enumerate(states)] )
             backward[j][i] = p
+
+    f = forward
+    b = backward
 
     ve = np.multiply(forward, backward)
 
@@ -218,5 +225,5 @@ P_char, initial, transition = train(data = read_data_part1())
 #print "\n".join([ r for r in test_letters[2] ])
 
 print " Simple:", "".join(simplified(test_letters))
-#print " HMM VE:", "".join(hmm_ve(test_letters))
+print " HMM VE:", "".join(hmm_ve(test_letters))
 print "HMM MAP:", "".join(hmm_viterbi(test_letters))

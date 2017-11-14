@@ -114,19 +114,6 @@ def emission(st, obs):
     tn: True negative  - obs:' ', st:'*'
     fn: False negative - obs:' ', st:' '
     """
-<<<<<<< HEAD
-    m, n, star = 0, 0, 0
-    for line_train, line_obs in zip(train_letters[st], obs):
-        for p1, p2 in zip(line_train, line_obs):
-            if p1 == "*":
-                star += 1
-            if p1 == p2:
-                m += 1
-            else:
-                n += 1
-    return (m + 1) / ( (m+n) + 72)
-#    return 0.8*m/(m+n)
-=======
     tp, fn, tn, fp = 0, 0, 0, 0
     for line_train, line_obs in zip(train_letters[st], obs):
         for p1, p2 in zip(line_train, line_obs):
@@ -138,9 +125,8 @@ def emission(st, obs):
                 tn += 1
             elif p1 == ' ' and p2 == '*':
                 fp += 1
-    
+
     return (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
->>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
 
 # Functions for each algorithm.
 #
@@ -180,13 +166,9 @@ def hmm_ve(sentence):
             else:
                 p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
                             for k, key in enumerate(states)] )
-<<<<<<< HEAD
-            forward[j][i] = p * emission(st, obs) #* pow(10,50)
-=======
             # factor = upscale(p*emission(st,obs))
             # factor_list[j][i] = factor
             forward[j][i] = p * emission(st, obs) * pow(10,80)
->>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
@@ -215,10 +197,6 @@ def hmm_viterbi( sentence):
     states = list(VALID_CHAR)
     observed = sentence
 
-<<<<<<< HEAD
-=======
-    # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
->>>>>>> 68223437f9f072529e48fa40e134ca6a276b9260
     viterbi = np.zeros([len(states), len(observed)])
     trace = np.zeros([len(states), len(observed)], dtype=int)
 
@@ -263,6 +241,6 @@ P_char, initial, transition = train(data = read_data_part1())
 #  looks like:
 #print "\n".join([ r for r in test_letters[2] ])
 
-# print " Simple:", "".join(simplified(test_letters))
-print " HMM VE:", "".join(hmm_ve(test_letters))
-# print "HMM MAP:", "".join(hmm_viterbi(test_letters))
+print " Simple:", "".join(simplified(test_letters))
+#print " HMM VE:", "".join(hmm_ve(test_letters))
+print "HMM MAP:", "".join(hmm_viterbi(test_letters))

@@ -23,6 +23,14 @@
 #  I need all the information of the emission probabilities for all the words appeared
 #  in training set.
 #
+# [Simplified]
+# 
+# 
+# 
+# [Variable Elimination]
+#
+#
+#
 # [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores
 #  calculated during the Viterbi algorithm. `trace` is used to trace back the
 #  hidden states. During the traceback, I appended the states in the list `hidden`,
@@ -70,6 +78,17 @@
 #        3. HMM MAP:       89.78%               31.55%
 #
 # There was tremendous improvement on the accuracy.
+#
+# We took the log probability in the Viterbi algorithm. Also, by now the other algorithm
+# had been implemented. This is the final accuracy. For the words not in the training set,
+# we set the emission probability to a very small number
+# 
+# ==> So far scored 2000 sentences with 29442 words.
+#                 Words correct:     Sentences correct:
+# 0. Ground truth:      100.00%              100.00%
+#   1. Simplified:       93.92%               47.45%
+#       2. HMM VE:       94.94%               53.60%
+#      3. HMM MAP:       94.88%               53.55%
 #
 ##############################################################
 # (4) Answers to any questions asked below in the assignment

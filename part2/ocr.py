@@ -12,12 +12,17 @@ from PIL import Image, ImageDraw, ImageFont
 import sys
 import numpy as np
 from math import log
-
+from scipy.misc import comb
 CHARACTER_WIDTH = 14
 CHARACTER_HEIGHT = 25
-SMALL_PROB = 1/10**6
+SMALL_PROB = 1/10**4
+SMALL_PROB2 = 1/10**3
 VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
-
+states = list(VALID_CHAR)
+## Delete this ###
+v = []
+vi = []
+##################
 
 def load_letters(fname):
     im = Image.open(fname)
@@ -53,10 +58,10 @@ def train(data):
     transition = {ch:{} for ch in VALID_CHAR}
 
     ##### Delete this ################
-    with open("sh.txt", 'r') as fhand:
-        data = fhand.read()
-        unicode_data = data.decode("utf-8")
-        data = unicode_data.encode("ascii", "ignore")
+#    with open("sh.txt", 'r') as fhand:
+#        data = fhand.read()
+#        unicode_data = data.decode("utf-8")
+#        data = unicode_data.encode("ascii", "ignore")
     ##################################
 
     # Total count of a character
@@ -107,7 +112,8 @@ def emission(st, obs):
                 m += 1
             else:
                 n += 1
-    return (m * 0.8)/(m + n)
+    return (0.8**m)*(0.2**n)
+#    return 0.8*m/(m+n)
 
 # Functions for each algorithm.
 #
@@ -115,22 +121,31 @@ def simplified(sentence):
     ##### P(S | W) = P(W | S) * P(S) / P(W)
     # using 1/72 for p_initial
 
-    states = list(VALID_CHAR)
     predicted_states = []
     observed = sentence
     for obs in observed:
-        most_prob_state = max([ (st, emission(st, obs) * 1/len(VALID_CHAR)) \
+        most_prob_state = max([ (st, emission(st, obs) * 1/len(states)) \
                                     for st in states], key = lambda x: x[1])
         predicted_states.append(most_prob_state[0])
     return predicted_states
 
 def hmm_ve(sentence):
-    states = list(VALID_CHAR)
+    ##### Must find the BUG ##############
     observed = sentence
 
     forward = np.zeros([len(states), len(observed)])
     backward = np.zeros([len(states), len(observed)])
     predicted_states = []
+
+    for i, obs in enumerate(observed):
+        for j, st in enumerate(states):
+            if i == 0:
+#                p = P_char.get(st, SMALL_PROB)     # P_char
+                p = 1/len(states)                  # const - 1/72
+            else:
+                p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
+                            for k, key in enumerate(states)] )
+            forward[j][i] = p * emission(st, obs)
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
@@ -138,31 +153,20 @@ def hmm_ve(sentence):
                 p = 1
             else:
                 p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
-                            for k, key in enumerate(transition)] )
+                            for k, key in enumerate(states)] )
             backward[j][i] = p
 
-    for i, obs in enumerate(observed):
-        for j, st in enumerate(states):
-            if i == 0:
-#                p = initial.get(st, SMALL_PROB)
-                p = 1/len(VALID_CHAR)
-            else:
-                p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
-                            for k, key in enumerate(transition)] )
-            forward[j][i] = p * emission(st, obs)
-
-#                if forward[j][i] > max_value:
-#                    max_value, max_state = score[j][i], st
-#            predicted_states.append(max_state)
     ve = np.multiply(forward, backward)
 
     for i in range(len(observed)):
         z = np.argmax(ve[:, i])
         predicted_states.append(states[z])
-
+    global v
+    v = ve
     return predicted_states
 
 def hmm_viterbi( sentence):
+
     states = list(VALID_CHAR)
     observed = sentence
     # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
@@ -172,14 +176,13 @@ def hmm_viterbi( sentence):
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-#                viterbi[j][i], trace[j][i] = log(initial.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
-                viterbi[j][i], trace[j][i] = log(1/len(VALID_CHAR)) + log(emission(st, obs)), 0
+#                viterbi[j][i], trace[j][i] = log(P_char.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
+                viterbi[j][i], trace[j][i] = log(1/len(states)) + log(emission(st, obs)), 0
             else:
                 max_k, max_p = max([ (k, viterbi[k][i-1] + log(transition[key].get(st, SMALL_PROB))) \
-                                       for k, key in enumerate(transition)], key = lambda x: x[1])
+                                       for k, key in enumerate(states)], key = lambda x: x[1])
                 viterbi[j][i], trace[j][i] = max_p + log(emission(st, obs)), max_k
 
-#    print viterbi[:,-1]
     # trace back
     z = np.argmax(viterbi[:,-1])
     hidden = [states[z]]
@@ -187,6 +190,8 @@ def hmm_viterbi( sentence):
         z = trace[z,i]
         hidden.append(states[z])
 
+    global vi
+    vi = viterbi
     # return REVERSED traceback sequence
     return hidden[::-1]
 
@@ -210,7 +215,6 @@ P_char, initial, transition = train(data = read_data_part1())
 #  looks like:
 #print "\n".join([ r for r in test_letters[2] ])
 
-
-print " Simple: ", "".join(simplified(test_letters))
-print " HMM VE: ", "".join(hmm_ve(test_letters))
-print "HMM MAP: ", "".join(hmm_viterbi(test_letters))
+print " Simple:", "".join(simplified(test_letters))
+#print " HMM VE:", "".join(hmm_ve(test_letters))
+print "HMM MAP:", "".join(hmm_viterbi(test_letters))

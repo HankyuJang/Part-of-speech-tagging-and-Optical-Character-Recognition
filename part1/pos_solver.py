@@ -166,7 +166,7 @@ class Solver:
         ##### P(S | W) = P(W | S) * P(S) / P(W)
         states = self.pos.keys()
         predicted_states = []
-        for word in sentence:
+        for word in sentence: # ignore unseen and return noun?
             most_prob_state = max([ (st, self.emission[st].get(word, self.SMALL_PROB) * self.pos[st]) \
                                         for st in states ], key = lambda x: x[1])
             predicted_states.append(most_prob_state[0])

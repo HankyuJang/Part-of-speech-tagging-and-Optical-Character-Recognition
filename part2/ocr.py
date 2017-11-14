@@ -86,6 +86,7 @@ def train(data):
 
     # Convert to prob
     for l in initial:
+#        initial[l] = 1/len(states)   # uncomment to make const 1/72
         initial[l] /= valid_lines
 
     # Transition Probability
@@ -109,14 +110,16 @@ def emission(st, obs):
     returns emission probability calculated by the formula (m * 0.8 + 0.2 * n)/(m+n)
     where m is the number of same pixel and n is number of diff pixel
     """
-    m, n = 0, 0
+    m, n, star = 0, 0, 0
     for line_train, line_obs in zip(train_letters[st], obs):
         for p1, p2 in zip(line_train, line_obs):
+            if p1 == "*":
+                star += 1
             if p1 == p2:
                 m += 1
             else:
                 n += 1
-    return (0.8**m)*(0.2**n)
+    return (m + 1) / ( (m+n) + 72)
 #    return 0.8*m/(m+n)
 
 # Functions for each algorithm.
@@ -136,9 +139,8 @@ def simplified(sentence):
 def hmm_ve(sentence):
     global f
     global b
-    ##### Must find the BUG ##############
-    observed = sentence
 
+    observed = sentence
     forward = np.zeros([len(states), len(observed)])
     backward = np.zeros([len(states), len(observed)])
     predicted_states = []
@@ -146,19 +148,18 @@ def hmm_ve(sentence):
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-#                p = P_char.get(st, SMALL_PROB)     # P_char
-                p = 1/len(states)                  # const - 1/72
+                p = initial.get(st, SMALL_PROB)     # initial
             else:
                 p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
                             for k, key in enumerate(states)] )
-            forward[j][i] = p * emission(st, obs) * pow(10,50)
+            forward[j][i] = p * emission(st, obs) #* pow(10,50)
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
             if i == len(observed) - 1:
                 p = 1
             else:
-                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) * pow(10,50)\
+                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
                             for k, key in enumerate(states)] )
             backward[j][i] = p
 
@@ -178,15 +179,14 @@ def hmm_viterbi( sentence):
 
     states = list(VALID_CHAR)
     observed = sentence
-    # observed = [word for word in sentence if word in self.words_in_training] # ignore unseen words
+
     viterbi = np.zeros([len(states), len(observed)])
     trace = np.zeros([len(states), len(observed)], dtype=int)
 
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-#                viterbi[j][i], trace[j][i] = log(P_char.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
-                viterbi[j][i], trace[j][i] = log(1/len(states)) + log(emission(st, obs)), 0
+                viterbi[j][i], trace[j][i] = log(initial.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
             else:
                 max_k, max_p = max([ (k, viterbi[k][i-1] + log(transition[key].get(st, SMALL_PROB))) \
                                        for k, key in enumerate(states)], key = lambda x: x[1])

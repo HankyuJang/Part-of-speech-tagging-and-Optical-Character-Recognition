@@ -76,13 +76,15 @@ def train(data):
         P_char[l] /= S_total
 
     # Count of character at the start of a line
+    valid_lines = 0
     for line in data:
         if line[0] in VALID_CHAR:
+            valid_lines += 1
             initial[line[0]] = initial.get(line[0], 0) + 1
+
     # Convert to prob
-    S_total = len(data)
     for l in initial:
-        initial[l] /= S_total
+        initial[l] /= valid_lines
 
     # Transition Probability
     for line in data:

@@ -24,12 +24,19 @@
 #  in training set.
 #
 # [Simplified]
-# 
-# 
-# 
+#  For Simplified, for every word, I maximized over P(POS)*P(word | POS) 
+#  In case the test data set had new unseen word, a very small value of probability was
+#  taken as emission
+#
 # [Variable Elimination]
-#
-#
+# For variable elimination, I used Dynamic Programming to calculate forward propagation and backward propagation 
+# values. Forward Propagation = sum of (P(State-i | State-j)*P(State-j)* P(W-i | State-i)) across all states of j position,
+# where j = i - 1. For i = 1, we have P(State)*(P(Word1 | State) for each state
+# Backward propagation for any i = sum of (P(State-j | State-i)*P(Word-j | State-j)) for all states in j position,
+# where j = i + 1
+# For i = n (last word), back propagation = 1
+# We get the probabilities for VE by multiplying forward scores with corresponding backward score
+# VE = forward_propagation * backward_propagation
 #
 # [Viterbi] I used `score` and `trace` matrices. `score` matrix contains the scores
 #  calculated during the Viterbi algorithm. `trace` is used to trace back the

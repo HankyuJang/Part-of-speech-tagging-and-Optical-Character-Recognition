@@ -278,8 +278,8 @@ def emission(st, i):
                     tn += 1
                 elif p1 == ' ' and p2 == '*':
                     fp += 1
-
-        emission_dict[st][i] = (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
+        emission_dict[st][i] = (0.35**tp)*(0.95**fn)*(0.65**tn)*(0.05**fp)
+#        emission_dict[st][i] = (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
         return emission_dict[st][i]
 
 

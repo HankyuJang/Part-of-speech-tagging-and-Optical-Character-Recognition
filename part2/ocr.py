@@ -12,14 +12,19 @@ from PIL import Image, ImageDraw, ImageFont
 import sys
 import numpy as np
 from math import log
-from scipy.misc import comb
+
+###### Change Flag to True to train on train_txt_fname
+######  as currently the models are training on "bc.train"
+flag = False
+
 CHARACTER_WIDTH = 14
 CHARACTER_HEIGHT = 25
-SMALL_PROB = 1/10**4
-SMALL_PROB2 = 1/10**3
+SMALL_PROB = 1/10**6
 SCALE_FACTOR = 10
 VALID_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789(),.-!?\"' "
 states = list(VALID_CHAR)
+emission_dict = {st: {} for st in states}
+
 
 def load_letters(fname):
     im = Image.open(fname)
@@ -39,12 +44,18 @@ def load_training_letters(fname):
     return { TRAIN_LETTERS[i]: letter_images[i] for i in range(0, len(TRAIN_LETTERS) ) }
 
 
-def read_data_part1(fname="bc.train"):
+def read_data(fname, flag):
     exemplars = []
-    file = open(fname, 'r');
-    for line in file:
-        data = tuple([w for w in line.split()])
-        exemplars += [ " ".join(data[0::2]) ] # fix space before fullstop
+    if flag == True:
+        with open(fname, 'r') as file:
+            for line in file:
+                data = tuple([w for w in line.split()])
+                exemplars += [ " ".join(data) ]
+    else:
+        with open("bc.train", 'r') as file:
+            for line in file:
+                data = tuple([w for w in line.split()])
+                exemplars += [ " ".join(data[0::2]) ] # fix space before fullstop
     return exemplars
 
 
@@ -73,7 +84,7 @@ def train(data):
 
     # Convert to prob
     for l in initial:
-#        initial[l] = 1/len(states)   # uncomment to make const 1/72
+        #initial[l] = 1/len(states)   # uncomment to make const 1/72
         initial[l] /= valid_lines
 
     # Transition Probability
@@ -87,11 +98,12 @@ def train(data):
         for l_n in transition[l]:
             transition[l][l_n] /= S_total
 
-
     return P_char, initial, transition
 
-# Increase coeffcient of fp or tn to handle ' ' better, but this may end up in many empty spaces.
-def emission(st, obs):
+
+# Increase coeffcient of fp or tn to handle ' ' better,
+# but this may end up in many empty spaces.
+def emission(st, i):
     """
     obs: list of list representing the character
     st: character
@@ -101,19 +113,33 @@ def emission(st, obs):
     tn: True negative  - obs:' ', st:'*'
     fn: False negative - obs:' ', st:' '
     """
-    tp, fn, tn, fp = 0, 0, 0, 0
-    for line_train, line_obs in zip(train_letters[st], obs):
-        for p1, p2 in zip(line_train, line_obs):
-            if p1 == '*' and p2 == '*':
-                tp += 1
-            elif p1 == ' ' and p2 == ' ':
-                fn += 1
-            elif p1 == '*' and p2 == ' ':
-                tn += 1
-            elif p1 == ' ' and p2 == '*':
-                fp += 1
+    try:
+        return emission_dict[st][i]
+    except:
+        obs = test_letters[i]
+        tp, fn, tn, fp = 0, 0, 0, 0
+        for line_train, line_obs in zip(train_letters[st], obs):
+            for p1, p2 in zip(line_train, line_obs):
+                if p1 == '*' and p2 == '*':
+                    tp += 1
+                elif p1 == ' ' and p2 == ' ':
+                    fn += 1
+                elif p1 == '*' and p2 == ' ':
+                    tn += 1
+                elif p1 == ' ' and p2 == '*':
+                    fp += 1
 
-    return (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
+        emission_dict[st][i] = (0.95**tp)*(0.6**fn)*(0.4**tn)*(0.2**fp)
+        return emission_dict[st][i]
+
+
+def upscale(number):
+    factor = 0
+    while number < 1:
+        number *= SCALE_FACTOR
+        factor += 1
+    return factor
+
 
 # Functions for each algorithm.
 #
@@ -123,18 +149,12 @@ def simplified(sentence):
 
     predicted_states = []
     observed = sentence
-    for obs in observed:
-        most_prob_state = max([ (st, emission(st, obs) * 1/len(states)) \
-                                    for st in states], key = lambda x: x[1])
+    for i, obs in enumerate(observed):
+        most_prob_state = max( [ (st, emission(st, i) * 1/len(states)) \
+                                    for st in states ], key = lambda x: x[1] )
         predicted_states.append(most_prob_state[0])
     return predicted_states
 
-def upscale(number):
-    factor = 0
-    while number < 1:
-        number *= SCALE_FACTOR
-        factor += 1
-    return factor
 
 def hmm_ve(sentence):
     observed = sentence
@@ -152,24 +172,24 @@ def hmm_ve(sentence):
                 # p = P_char.get(st, SMALL_PROB)     # P_char
                 p = 1/len(states)                  # const - 1/72
             else:
-                p = sum( [forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
-                            for k, key in enumerate(states)] )
-            factor = upscale(p*emission(st,obs))
+                p = sum([forward[k][i-1] * transition[key].get(st, SMALL_PROB) \
+                            for k, key in enumerate(states)])
+            factor = upscale(p * emission(st, i))
             forward_scale[j][i] = factor
-            forward[j][i] = p * emission(st, obs) * pow(SCALE_FACTOR, factor)
-            forward_log[j][i] = log(p * emission(st, obs))
+            forward[j][i] = p * emission(st, i) * pow(SCALE_FACTOR, factor)
+            forward_log[j][i] = log(p * emission(st, i))
 
     for i, obs in zip(range(len(observed)-1, -1, -1), observed[::-1]):
         for j, st in enumerate(states):
             if i == len(observed) - 1:
                 p = 1
             else:
-                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, observed[i+1]) \
+                p = sum( [ backward[k][i+1] * transition[st].get(key, SMALL_PROB) * emission(key, i+1) \
                             for k, key in enumerate(states)] )
-            factor = upscale(p*emission(st,obs))
+            factor = upscale(p * emission(st, i))
             backward_scale[j][i] = factor
             backward[j][i] = p * pow(SCALE_FACTOR, factor)
-            backward_log[j][i] = log(p) 
+            backward_log[j][i] = log(p)
 
     ve = forward_log + backward_log
 
@@ -177,6 +197,7 @@ def hmm_ve(sentence):
         z = np.argmax(ve[:, i])
         predicted_states.append(states[z])
     return predicted_states
+
 
 def hmm_viterbi( sentence):
     states = list(VALID_CHAR)
@@ -189,11 +210,11 @@ def hmm_viterbi( sentence):
         for j, st in enumerate(states):
             if i == 0:
                 # viterbi[j][i], trace[j][i] = log(P_char.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
-                viterbi[j][i], trace[j][i] = log(1/len(states)) + log(emission(st, obs)), 0
+                viterbi[j][i], trace[j][i] = log(1/len(states)) + log(emission(st, i)), 0
             else:
-                max_k, max_p = max([ (k, viterbi[k][i-1] + log(transition[key].get(st, SMALL_PROB))) \
-                                       for k, key in enumerate(states)], key = lambda x: x[1])
-                viterbi[j][i], trace[j][i] = max_p + log(emission(st, obs)), max_k
+                max_k, max_p = max( [( k, viterbi[k][i-1] + log(transition[key].get(st, SMALL_PROB)) ) \
+                                       for k, key in enumerate(states)], key = lambda x: x[1] )
+                viterbi[j][i], trace[j][i] = max_p + log(emission(st, i)), max_k
 
     # trace back
     z = np.argmax(viterbi[:,-1])
@@ -205,25 +226,18 @@ def hmm_viterbi( sentence):
     # return REVERSED traceback sequence
     return hidden[::-1]
 
+
 #####
 # main program
 (train_img_fname, train_txt_fname, test_img_fname) = sys.argv[1:]
 train_letters = load_training_letters(train_img_fname)
 test_letters = load_letters(test_img_fname)
 
-P_char, initial, transition = train(data = read_data_part1())
-## Below is just some sample code to show you how the functions above work.
-# You can delete them and put your own code here!
-
-
-# Each training letter is now stored as a list of characters, where black
-#  dots are represented by *'s and white dots are spaces. For example,
-#  here's what "a" looks like:
 #print "\n".join([ r for r in train_letters['a'] ])
-
-# Same with test letters. Here's what the third letter of the test data
-#  looks like:
 #print "\n".join([ r for r in test_letters[2] ])
+
+P_char, initial, transition = train(data = read_data(train_txt_fname, flag))
+# uncomment below line to use different data
 
 print " Simple:", "".join(simplified(test_letters))
 print " HMM VE:", "".join(hmm_ve(test_letters))

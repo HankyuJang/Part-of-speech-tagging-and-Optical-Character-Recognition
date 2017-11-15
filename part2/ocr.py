@@ -42,70 +42,105 @@
 # emission probability. Using those probabilities, the program outputs the possible
 # hidden states for three different algorithms.
 #
-# If you run the experiment.sh, it runs the program for all the test cases.
-# Here is the output of running the program.
+# We made a python script `test-ocr.py` to test our three algorithm to test images.
+# You can run the script in the Server. Following is the output of running the script.
 #
-# [hankjang@silo part2]$ ./experiment.sh
+# [hankjang@silo part2]$ python test-ocr.py
+# ####################################
+# Correct: SUPREME COURT OF THE UNITED STATES
 # Simple: SUPREME COURT OF THE UNITED STATES
 # HMM VE: SUPREME COURT OF THE UN1TED STATES
-# HMM MAP: SUPREME COURT OF THE UNITED STATES
+# HMM MAP: SUPREME COURT OE THE UNITED STATES
+# ####################################
+# Correct: Certiorari to the United States Court of Appeals for the Sixth Circuit
 # Simple: C rt1crar1 to tn  Un1ted  tat-s  cur  o  -pp-a1a   .  he S1xth C1rcu1t
-# HMM VE: C rt1orar1 to tn  Un1teu  tate    ur  o  -pp-a1    r  he Sirth Circui
+# HMM VE: C rt1orar1 to tn  Un1teu  tate   our  o  -pp-a1    r  he Sirth Circui
 # HMM MAP: C rticrarl to the United States Court of -ppeala ' . the Sixth Circuit
+# ####################################
+# Correct: Nos. 14-556. Argued April 28, 2015 - Decided June 26, 2015
 # Simple: Nos. 14-556. Argued Apri1 28, 2015 - Decided June 26, 2015
 # HMM VE: Nos. 14-556. Argued Apri1 28, 2015 - Decided June 26, 2015
 # HMM MAP: Nos. 14-556. Argued April 28, 2015 - Decided June 26, 2015
+# ####################################
+# Correct: Together with No. 14-562, Tanco et al. v. Haslam, Governor of
 # Simple: Together with No. 14-562, Tanco et al. v. Haslam, Governor of
 # HMM VE: Together with No. 14-562, Tanoo et al. v. Haslam, Governor of
 # HMM MAP: Together with No. 14-562, Tanco et al. v. Haslam, Governor of
+# ####################################
+# Correct: Tennessee, et al., also on centiorari to the same court.
 # Simple: Tennessee, et a1., also on centiorari to the same court.
 # HMM VE: Tennessee, et a1., also on centiorari to the same court.
 # HMM MAP: Tennessee, et al , also on centiorari to the same court.
+# ####################################
+# Correct: Opinion of the Court
 # Simple: Opinion"ofIthekCourt
 # HMM VE: Opihion oflthe Court
 # HMM MAP: Opinion ofithe Court
+# ####################################
+# Correct: As some of the petitioners in these cases demonstrate, marriage
 # Simple: As some of the petitioners in these cases demonstrate, marr1age
 # HMM VE: As some of the petitioners in these cases demonstrate, marriage
-# HMM MAP: As some of the petitioners in these cases demonstrate, marriage
+# HMM MAP: As some of the petitioners in these cases demonstrate. marriage
+# ####################################
+# Correct: embodies a love that may endure even past death.
 # Simple: embodies a love that may endure even past death.
 # HMM VE: embodies a love that may endure even past death.
 # HMM MAP: embodies a love that may endure even past death.
+# ####################################
+# Correct: It would misunderstand these men and women to say they disrespect
 # Simple: 1  w u1u m1su  -r tanc th- - m-  an    m n t   ay  h , u1 r-s -ct
 # HMM VE: 1    u1u m1su  er tanc the   me  an    m n t   ay  h y u1 r-   ct
-# HMM MAP: It would misu cer tand the e men and . m n to cay th , o1 r s -ct
+# HMM MAP: It would misu cer tand the e men and . m n to cay th , ol r s -ct
+# ####################################
+# Correct: the idea of marriage.
 # Simple: the idea of marriage.
 # HMM VE: the idea of marriage.
 # HMM MAP: the idea of marriage.
+# ####################################
+# Correct: Their plea is that they do respect it, respect it so deeply that
 # Simple: Their p1ea is that they do respect it, respect it so deep1y that
-# HMM VE: Their p1ea is that they do respect it, respect it so deep1y that
+# HMM VE: Their p1ea is that they do respect it, respect it so deeply that
 # HMM MAP: Their plea is that they do respect it, respect it so deeply that
+# ####################################
+# Correct: they seek to find its fulfillment for themselves.
 # Simple: they seek to f1nd 1ts fu1f111ment for themse1ves.
-# HMM VE: they seek to find 1ts fu1fi11ment for themse1ves.
+# HMM VE: they seek to find 1ts fu1fi11ment for themselves.
 # HMM MAP: they seek to find its fulfillment for themselves.
+# ####################################
+# Correct: Their hope is not to be condemned to live in loneliness,
 # Simple: Their hope is not to be condemned to 1ive in lone1iness,
 # HMM VE: Their hope is not to be condemned to 1ive in lone1iness,
 # HMM MAP: Their hope is not to be condemned to live in loneliness,
+# ####################################
+# Correct: excluded from one of civilization's oldest institutions.
 # Simple: excluded from one of civilization's oldest institutions.
 # HMM VE: excluded from one of civilization's oldest institutions.
 # HMM MAP: excluded from one of civilization's oldest institutions.
+# ####################################
+# Correct: They ask for equal dignity in the eyes of the law.
 # Simple: They ask for equal dignity in the eyes of the law.
 # HMM VE: They ask for equal dignity in the eyes of the law.
 # HMM MAP: They ask for equal dignity in the eyes of the law.
+# ####################################
+# Correct: The Constitution grants them that right.
 # Simple: The"Constitution-grants them that right.
 # HMM VE: The Constitution grants them that right.
 # HMM MAP: The Constitution grants them that right.
+# ####################################
+# Correct: The judgement of the Court of Appeals for the Sixth Circuit is reversed.
 # Simple: The judgement of the Court of nppea1s for the Sixth Circu1t 1s reversed.
-# HMM VE: The judgement of the Court of nppea1s for the Sixth Circuit 1s reversed.
+# HMM VE: The judgement of the Court of hppea1s for the Sixth Circuit 1s reversed.
 # HMM MAP: The judgement of the Court of sppeals for the Sixth Circuit is reversed.
+# ####################################
+# Correct: It is so ordered.
 # Simple: It is so ordered.
 # HMM VE: It is so ordered.
 # HMM MAP: It is so ordered.
+# ####################################
+# Correct: KENNEDY, J., delivered the opinion of the Court, in which
 # Simple: KENNEDY, J., de11vered the op1n1on cf the Court, 1n which
-# HMM VE: KENNEDY, J., de11vered the opinion of the Court, in which
-# HMM MAP: KENNEDY. J., delivered the opinion of the Court, in which
-# Simple: GINSBURG, BREYER, SOTOMAYOR, and KAGAN, JJ., joined.
-# HMM VE: GlNSBURG, BREYER, SOTOMAYOR, and KACsN, JJ., joined.
-# HMM MAP: GINSBURG. BREYER. SOTOMAYOR, and KACAN, JJ., joined.
+# HMM VE: KENNEDY, J., de11vered the opin1on of the Court, in which
+# HMM MAP: NEUNEDI. J., delivered the opinion of the Court. in which
 #
 ##############################################################
 # (3) Disscussion of problems, assumptions, simplification, and design decisions we made

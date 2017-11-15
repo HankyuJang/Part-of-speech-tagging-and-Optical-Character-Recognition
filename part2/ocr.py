@@ -354,7 +354,7 @@ def hmm_viterbi( sentence):
     for i, obs in enumerate(observed):
         for j, st in enumerate(states):
             if i == 0:
-                viterbi[j][i], trace[j][i] = log(initial.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
+                viterbi[j][i], trace[j][i] = log(initial.get(st, SMALL_PROB)) + log(emission(st, i)), 0
                 # viterbi[j][i], trace[j][i] = log(P_char.get(st, SMALL_PROB)) + log(emission(st, obs)), 0
                 # viterbi[j][i], trace[j][i] = log(1/len(states)) + log(emission(st, obs)), 0
             else:

@@ -192,9 +192,12 @@ import sys
 import numpy as np
 from math import log
 
-###### Change Flag to True to train on train_txt_fname
-######  as currently the models are training on "bc.train"
+#==============================================================================
+# Change Flag to True to train on train_txt_fname
+#  as currently the models are training on "bc.train"
 flag = False
+#==============================================================================
+
 
 CHARACTER_WIDTH = 14
 CHARACTER_HEIGHT = 25
@@ -225,16 +228,19 @@ def load_training_letters(fname):
 
 def read_data(fname, flag):
     exemplars = []
-    if flag == True:
+
+    if flag:
         with open(fname, 'r') as file:
             for line in file:
                 data = tuple([w for w in line.split()])
                 exemplars += [ " ".join(data) ]
+
     else:
         with open("bc.train", 'r') as file:
             for line in file:
                 data = tuple([w for w in line.split()])
                 exemplars += [ " ".join(data[0::2]) ] # fix space before fullstop
+
     return exemplars
 
 
@@ -380,7 +386,6 @@ def hmm_ve(sentence):
 
 
 def hmm_viterbi( sentence):
-    states = list(VALID_CHAR)
     observed = sentence
 
     viterbi = np.zeros([len(states), len(observed)])
@@ -414,11 +419,7 @@ def hmm_viterbi( sentence):
 train_letters = load_training_letters(train_img_fname)
 test_letters = load_letters(test_img_fname)
 
-#print "\n".join([ r for r in train_letters['a'] ])
-#print "\n".join([ r for r in test_letters[2] ])
-
 P_char, initial, transition = train(data = read_data(train_txt_fname, flag))
-# uncomment below line to use different data
 
 print " Simple:", "".join(simplified(test_letters))
 print " HMM VE:", "".join(hmm_ve(test_letters))
